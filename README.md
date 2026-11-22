@@ -1,44 +1,56 @@
-# Frostfuel agency and Studio dashboard
+# Frostfuel
 
-Website: https://frostfuel-studio.dearbrioche16.chatgpt.site/
-Dashboard: https://frostfuel-studio.dearbrioche16.chatgpt.site/admin
+Agency website and installable Studio dashboard for web development and video editing.
 
-Use the existing studio password from C:/Users/DHANUSH/Frostfuel-studio-access.txt. The Site retains its private review audience and may require ChatGPT sign-in first.
+## Deploy to Vercel
 
-## Install on your laptop
+**Start with [DEPLOY-VERCEL.md](DEPLOY-VERCEL.md).** It covers GitHub import, the private records store, public media store, required secret environment variables and migration from the existing Site.
 
-Open the dashboard in Edge or Chrome, sign in and click Install app. If no native prompt appears, use the address bar install icon or browser menu > Apps > Install this site as an app. The Codex browser may not support installation. Internet is required for client data and publishing; sensitive records are not cached offline.
+Vercel setup: Framework **Other**, Node **22.x**, build `npm run build`, output `public`. The repository's `vercel.json` routes website and API requests to the application function.
 
-## Manage the agency
+Required environment variables (values must never be committed):
 
-- Overview: real enquiry counts, active projects, recorded payments, outstanding balances, pipeline and deadlines.
-- Clients: add/edit clients, projects, stages, agreed values, payments, deadlines and private notes.
-- Enquiries: follow up on website requests, update statuses and convert them to client records.
-- Portfolio: add/edit/delete work, upload JPG/PNG/WebP covers up to 20 MB and add website or video links. Direct video uploads are not implemented.
-- Website: edit homepage headline, introduction, availability and contact email, then publish.
+- `ADMIN_PASSWORD`: your Studio password.
+- `BLOB_READ_WRITE_TOKEN`: a **private** Blob store for client records, enquiries and settings.
+- `MEDIA_BLOB_READ_WRITE_TOKEN`: a separate **public** Blob store for published pictures and videos.
 
-Saved portfolio and homepage updates use the same online storage read by the website. New page loads see updates immediately; open visible tabs sync within 30 seconds. No code deployment is needed for content updates. Client records and enquiries stay private behind authenticated APIs.
+The GitHub repository contains source and demo media. Live clients, enquiries and later uploads are **not** stored in GitHub. An optional migration script copies those to your own Blob stores without deleting the source; see the deployment guide before using it.
 
-Bookings are requests, not confirmed appointments. Email links open your mail app. Automatic email notifications, invoices, payment collection and calendar bookings are not configured.
+## Features
 
-Public visitor access still needs enabling before sharing with prospective clients. Concept previews are labelled and disappear after publishing your first real project.
+- Responsive black/cyan agency site with interactive Web/Video previews and enquiry form.
+- Password-protected Studio at `/admin`, installable through supported browsers.
+- Client pipeline, private notes, deadlines, agreed values, recorded payments and balances.
+- Enquiry follow-up statuses and conversion to client records.
+- Portfolio and pictures/video samples with cover/poster uploads and 20 MB media limit.
+- Homepage copy and contact-email controls.
+- Six-color palette editor with presets, preview, hex colors and contrast feedback.
+- Published content refreshes in open website tabs within 30 seconds.
 
-## Develop
+The dashboard requires internet. It does not cache private records for offline access. Email notifications, invoicing, payment collection and calendar reservations are not configured.
 
-## Picture and video samples
+## Develop and verify
 
-## Customize website colors
+```sh
+npm ci
+npm run build
+npm test
+npm run dev
+```
 
-Go to Dashboard > Website > Website color palette. Choose Frost, Light, Forest or Ember, or enter custom six-digit hex colors using the color pickers. The embedded website preview shows unpublished changes. Publish palette saves the colors online; open visitor tabs update within 30 seconds. Discard changes restores the last published palette. Contrast feedback flags difficult-to-read combinations, and button/form text chooses a readable light or dark color automatically. Logo and uploaded media colors are unchanged. Palette settings use a separate storage record, preserving homepage content, email and client data. Run node verify-palette.mjs to check permissions, persistence and validation.
+Local preview: http://localhost:4173, Studio password `local-test-only`. Preview data is disposable and does not change production records. Use a Vercel preview deployment with separate stores to test real Blob storage and upload callbacks.
 
-Open Dashboard > Samples > Add sample. Upload a JPG, PNG, WebP, MP4 or WebM file (20 MB maximum), add a title/caption and click Publish sample. Videos play directly in the website's Samples section. Optional poster images can also be uploaded. A direct HTTPS video-file URL can be used for larger videos; YouTube/Vimeo page URLs are not direct media files.
+## Source map
 
-The default gallery contains two labelled demo pictures and an original six-second silent motion video. Publishing your first sample replaces the demo set. You can hide demo samples explicitly, and edit or delete your own samples. Deleting the final sample leaves an empty gallery; demos do not reappear. Published changes sync to open website tabs within 30 seconds.
+- `landing.html`, `dashboard.html`: website and Studio.
+- `worker/`: shared application routes.
+- `platform/`, `api/app.js`: Vercel storage, authentication and upload adapters.
+- `samples/`: media editor, gallery and labelled demo media.
+- `palette-*`: theme editor and site-wide palette application.
+- `build.mjs`: bundles the Worker-style application and browser upload client.
+- `sw.js`: network-only PWA service worker.
+- `scripts/migrate-from-sites.mjs`: optional private migration to your stores.
 
-Run node verify-media.mjs to test upload permissions, real image/video uploads, video ranges, publication and deletion. Sample-related files live under samples/ and worker/samples.js.
+The previous Sites deployment remains separate at https://frostfuel-studio.dearbrioche16.chatgpt.site. Pushing to this repository does not alter that Site; after you connect Vercel to GitHub, Vercel controls its own deployments.
 
-Run npm run build, node verify.mjs, then npm run dev. Local preview runs at http://localhost:4173 with disposable memory storage and password local-test-only. Production records are not changed by local testing.
-
-Edit landing.html for the website, dashboard.html for Studio, worker/studio.js for client and settings APIs, worker/api.js for existing auth/portfolio/upload APIs, and sw.js for the PWA service worker. build.mjs embeds assets and outputs dist/server/index.js. Preserve .openai/hosting.json when deploying updates.
-
-index.html and brand/brand.css retain the previous design and are no longer deployment inputs.
+The historical `index.html`, `main.js`, `style.css` and `brand/brand.css` are retained but are not current deployment inputs.

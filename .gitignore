@@ -3,3 +3,7 @@ dist/
 .env*
 *.tar.gz
 .taste-skill/
+public/vercel-upload.js
+!.env.example
+.vercel/
+migration-backups/
