@@ -1,1 +1,22 @@
-{"name":"frostfuel","type":"module","scripts":{"build":"node build.mjs","dev":"node preview.mjs","test":"node verify.mjs && node verify-media.mjs && node verify-palette.mjs && node verify-vercel.mjs && node verify-netlify.mjs","migrate:sites":"node scripts/migrate-from-sites.mjs"},"dependencies":{"@netlify/blobs":"^11.1.9","@vercel/blob":"^2.9.0","esbuild":"^0.28.2"},"overrides":{"zod":"^4.6.6"},"engines":{"node":"22.x"}}
+{
+  "name": "frostfuel",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node preview.mjs",
+    "test": "node verify.mjs && node verify-media.mjs && node verify-palette.mjs && node verify-vercel.mjs && node verify-netlify.mjs && node verify-payments.mjs",
+    "migrate:sites": "node scripts/migrate-from-sites.mjs"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^11.1.9",
+    "@vercel/blob": "^2.9.0",
+    "esbuild": "^0.28.2",
+    "qrcode": "^1.5.4"
+  },
+  "overrides": {
+    "zod": "^4.6.6"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

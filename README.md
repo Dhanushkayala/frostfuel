@@ -71,3 +71,13 @@ The local preview runs at http://localhost:4173 and uses disposable memory stora
 For Vercel instead, [DEPLOY-VERCEL.md](DEPLOY-VERCEL.md), `vercel.json` and `api/app.js` remain available as a separate deployment option. Its storage requirements differ from Netlify.
 
 The previous Site remains at https://frostfuel-studio.dearbrioche16.chatgpt.site; GitHub/Netlify updates do not change that separate deployment.
+
+## Direct UPI payments
+
+The website Pay section accepts a client’s agreed amount in INR and generates a QR and UPI app link for `kayaladhanush8@pingpay`. QR codes are generated in the browser, without a third-party QR service. Clients submit their 12-digit UTR/RRN after paying. The site records this as **Under review**, never automatic payment success.
+
+In **Admin → Payments**, verify the recipient, exact amount and transaction reference in your bank/UPI app, then check the verification box and confirm receipt. Confirmed totals exclude unverified submissions. The Clients tab’s manually entered paid balance stays separate to avoid double-counting existing records.
+
+The Payments tab also allows changing the UPI ID, display name and instructions, pausing payments, reviewing/rejecting references, cancelling unpaid requests and copying checkout links. Existing requests retain the UPI recipient captured when they were created. A global pause disables all outstanding checkouts. Share checkout links only with the relevant client; they are unguessable access links showing project, amount and payment status. Client names, email addresses and submitted UTRs are admin-only.
+
+This is direct UPI with manual reconciliation, not a gateway integration. No bank API/webhook is connected, and validity/settlement of the supplied UPI account cannot be independently verified by this code. Confirm the receiver in a UPI app and perform a small real payment yourself before relying on it for customer payments. No live money transfer is performed by the automated tests.

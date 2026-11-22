@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';
+import worker from './dist/server/index.js';
+const objects=new Map();const BUCKET={async get(k){return objects.has(k)?{text:async()=>objects.get(k)}:null},async put(k,v){objects.set(k,v)},async list({prefix}){return {objects:[...objects.keys()].filter(k=>k.startsWith(prefix)).map(key=>({key}))}}};
+const env={BUCKET,ADMIN_PASSWORD:'payment-test-only'};let cookie='';
+async function request(path,method='GET',body,admin=false,origin){return worker.fetch(new Request('https://test.frostfuel/api/'+path,{method,headers:{'Content-Type':'application/json',...(admin?{cookie}:{}),...(origin?{origin}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})}),env)}
+const settings=await(await request('payment-settings')).json();assert.equal(settings.upiId,'kayaladhanush8@pingpay');assert.equal(settings.enabled,true);
+assert.equal((await request('payment-settings','POST',settings)).status,401);assert.equal((await request('payments')).status,401);
+const base={name:'Test client',email:'test@example.com',project:'Website deposit',amount:'1234.50'};
+for(const amount of ['0','-1','1.001','NaN','1000000.01','1e4'])assert.equal((await request('payments','POST',{...base,amount})).status,400);
+assert.equal((await request('payments','POST',base,false,'https://evil.example')).status,403);
+const created=await request('payments','POST',base);assert.equal(created.status,201);const {id}=await created.json();
+let checkout=await(await request('payments/'+id)).json();assert.equal(checkout.paise,123450);assert.equal(checkout.payable,true);for(const key of ['email','name','reference'])assert.equal(key in checkout,false);
+assert.equal((await request('payments/'+id+'/review','POST',{status:'Paid',confirmed:true})).status,401);
+assert.equal((await request('payments/'+id+'/reference','POST',{reference:'<script>'})).status,400);
+assert.equal((await request('payments/'+id+'/reference','POST',{reference:'123456789012',status:'Paid',paise:1})).status,200);
+checkout=await(await request('payments/'+id)).json();assert.equal(checkout.status,'Under review');assert.equal(checkout.paise,123450);assert.equal(checkout.payable,false);assert.equal(checkout.upiId,'');assert.equal('reference' in checkout,false);
+assert.equal((await request('payments/'+id+'/reference','POST',{reference:'123456789013'})).status,409);
+const login=await request('login','POST',{password:env.ADMIN_PASSWORD});cookie=login.headers.get('set-cookie').split(';')[0];
+assert.equal((await request('payments/'+id+'/review','POST',{status:'Paid'},true)).status,400);
+assert.equal((await request('payments/'+id+'/review','POST',{status:'Paid',confirmed:true},true)).status,200);
+assert.equal((await request('payments/'+id+'/review','POST',{status:'Paid',confirmed:true},true)).status,409);
+assert.equal((await(await request('payments/'+id)).json()).status,'Paid');const records=await(await request('payments','GET',undefined,true)).json();assert.equal(records[0].reference,'123456789012');assert.equal(records[0].paise,123450);
+const second=await(await request('payments','POST',{...base,amount:'1.00'})).json();assert.equal((await request('payments/'+second.id+'/reference','POST',{reference:'123456789012'})).status,409);
+await request('payments/'+second.id+'/reference','POST',{reference:'123456789014'});await request('payments/'+second.id+'/review','POST',{status:'Rejected'},true);assert.equal((await(await request('payments/'+second.id)).json()).payable,true);
+assert.equal((await request('payments/'+second.id+'/reference','POST',{reference:'123456789015'})).status,200);
+assert.equal((await request('payments/'+second.id+'/review','POST',{status:'Cancelled'},true)).status,200);assert.equal((await(await request('payments/'+second.id)).json()).payable,false);
+assert.equal((await request('payment-settings','POST',{...settings,upiId:'invalid'},true)).status,400);
+assert.equal((await request('payment-settings','POST',{...settings,upiId:'new@bank',enabled:false},true)).status,200);
+assert.equal((await request('payments','POST',base)).status,503);
+// Recipient snapshots survive setting changes; private client details never enter checkout.
+assert.equal(JSON.parse(objects.get('payments/'+id)).upiId,settings.upiId);
+assert.equal((await request('payments/not-a-valid-id')).status,404);
+const js=await worker.fetch(new Request('https://test.frostfuel/payments.js'),env);assert.match(js.headers.get('Content-Type'),/javascript/);
+console.log('PASS: exact paise amounts, private ledger, admin-only review, manual bank confirmation, duplicate UTR rejection, immutable paid records, pause/cancel, recipient snapshots and script routing.');
