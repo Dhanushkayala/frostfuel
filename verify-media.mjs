@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import worker from './dist/server/index.js';
+const objects=new Map();const BUCKET={async list({prefix}){return{objects:[...objects.keys()].filter(k=>k.startsWith(prefix)).map(key=>({key})),truncated:false}},async put(k,v,o){objects.set(k,{v,o})},async get(k){const x=objects.get(k);return x?{text:async()=>x.v,arrayBuffer:async()=>x.v,body:x.v,httpMetadata:x.o?.httpMetadata}:null},async delete(k){objects.delete(k)}};const env={BUCKET,ADMIN_PASSWORD:'media-test-password'};let cookie='';async function req(path,method='GET',body,headers={},auth=true){return worker.fetch(new Request('https://test.frostfuel/'+path,{method,headers:{...(cookie&&auth?{cookie}:{}),...headers},...(body===undefined?{}:{body})}),env)}
+for(const page of ['','admin']){const html=await(await req(page)).text();for(const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);assert.ok(html.includes('samples'));assert.ok(html.includes(page?"$$('[data-edit-sample]')":"$$('[data-sample-picture]')"),'selector helpers must survive bundling');}
+const demos=await(await req('api/samples')).json();assert.equal(demos.length,3);assert.equal(demos.filter(x=>x.type==='video').length,1);
+assert.equal((await req('api/sample-upload','POST','bad',{'Content-Type':'video/mp4'})).status,401);
+const login=await req('api/login','POST',JSON.stringify({password:env.ADMIN_PASSWORD}),{'Content-Type':'application/json'});cookie=login.headers.get('set-cookie').split(';')[0];
+assert.equal((await req('api/sample-upload','POST','bad',{'Content-Type':'image/png'})).status,400);
+const bytes=fs.readFileSync('samples/motion-demo.mp4'),upload=await(await req('api/sample-upload','POST',bytes,{'Content-Type':'video/mp4'})).json();assert.equal(upload.type,'video');assert.ok(upload.url.startsWith('/sample-media/'));
+const video=await req(upload.url.slice(1),'GET',undefined,{},false);assert.equal(video.headers.get('Content-Type'),'video/mp4');assert.equal((await video.arrayBuffer()).byteLength,bytes.length);
+const ranged=await req(upload.url.slice(1),'GET',undefined,{Range:'bytes=0-99'},false);assert.equal(ranged.status,206);assert.equal((await ranged.arrayBuffer()).byteLength,100);
+const sample=await(await req('api/samples','POST',JSON.stringify({title:'Video test',type:'video',url:upload.url,caption:'Local test'}),{'Content-Type':'application/json'})).json();assert.ok(sample.id);const published=await(await req('api/samples')).json();assert.equal(published.length,1);assert.equal(published[0].url,upload.url);
+await req('api/samples/'+sample.id,'DELETE');assert.deepEqual(await(await req('api/samples')).json(),[]);
+assert.equal((await req('api/samples','POST',JSON.stringify({title:'Unsafe',type:'picture',url:'javascript:alert(1)'}),{'Content-Type':'application/json'})).status,400);
+const image=await(await req('api/sample-upload','POST',fs.readFileSync('samples/website-demo.jpg'),{'Content-Type':'image/jpeg'})).json();assert.equal(image.type,'picture');
+const demoVideo=await req('demo-media/motion-demo.mp4','GET',undefined,{Range:'bytes=0-9'});assert.equal(demoVideo.status,206);
+console.log('PASS: built script syntax, demo pictures/video, protected uploads, real MP4/JPG uploads, playback bytes/ranges, publishing/deletion, unsafe URLs and false file types.');

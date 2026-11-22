@@ -1,0 +1,6 @@
+const paletteDefaults={background:'#05090c',surface:'#101c23',text:'#effaff',muted:'#a5bbc5',accent:'#70d9f1',bookingBackground:'#d8f4f6'};
+function cleanPalette(value){if(!value||typeof value!=='object'||Array.isArray(value))return null;const p={};for(const k of Object.keys(paletteDefaults)){if(typeof value[k]!=='string'||!/^#[a-fA-F0-9]{6}$/.test(value[k]))return null;p[k]=value[k].toLowerCase()}return p}
+function luminance(hex){const c=hex.slice(1).match(/../g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);return .2126*c[0]+.7152*c[1]+.0722*c[2]}
+function paletteContrast(a,b){const x=luminance(a),y=luminance(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05)}
+function readableOn(color){return paletteContrast(color,'#06131b')>=paletteContrast(color,'#ffffff')?'#06131b':'#ffffff'}
+function applyPalette(p,root=document.documentElement){if(!cleanPalette(p))return;for(const [k,v]of Object.entries({bg:p.background,panel:p.surface,ink:p.text,muted:p.muted,cyan:p.accent,'booking-bg':p.bookingBackground,'on-accent':readableOn(p.accent),'on-booking':readableOn(p.bookingBackground)}))root.style.setProperty('--'+k,v);const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=p.background}

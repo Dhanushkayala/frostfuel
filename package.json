@@ -1,0 +1,1 @@
+{"name":"frostfuel","type":"module","scripts":{"build":"node build.mjs","dev":"node preview.mjs"}}

@@ -1,0 +1,19 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import worker from './dist/server/index.js';
+const objects=new Map(),BUCKET={async list({prefix}){return{objects:[...objects.keys()].filter(k=>k.startsWith(prefix)).map(key=>({key})),truncated:false}},async put(k,v,o){objects.set(k,{v,o})},async get(k){const x=objects.get(k);return x?{text:async()=>x.v,body:x.v,httpMetadata:x.o?.httpMetadata}:null},async delete(k){objects.delete(k)}};
+const env={BUCKET,ADMIN_PASSWORD:'test-studio-secret'};let cookie='';
+async function request(path,method='GET',body,auth=true){return worker.fetch(new Request('https://test.frostfuel/'+path,{method,headers:{...(auth&&cookie?{cookie}:{}),'Content-Type':'application/json'},...(body!==undefined?{body:JSON.stringify(body)}:{})}),env)}
+for(const file of ['landing.html','dashboard.html']){const text=fs.readFileSync(file,'utf8');for(const s of text.matchAll(/<script>([\s\S]*?)<\/script>/g))new vm.Script(s[1],{filename:file});}
+assert.equal((await request('api/clients')).status,401);assert.equal((await request('api/settings','POST',{headline:'Unauthorized'})).status,401);
+const login=await request('api/login','POST',{password:env.ADMIN_PASSWORD});assert.equal(login.status,200);cookie=login.headers.get('set-cookie').split(';')[0];
+const b=await request('api/bookings','POST',{name:'Test Client',email:'test@example.com',service:'Web development',brief:'Test brief'});const booking=await b.json();assert.ok(booking.id);
+const saved=await request('api/clients','POST',{name:'Test Client',email:'test@example.com',stage:'Active',service:'Web development',amount:12000,paid:3000,bookingId:booking.id});const client=await saved.json();assert.ok(client.id);assert.equal(client.amount-client.paid,9000);
+assert.equal((await request('api/clients','POST',{name:'Invalid',stage:'Active',amount:100,paid:200})).status,400);
+await request('api/booking-status','POST',{id:booking.id,status:'Converted'});assert.equal((await(await request('api/bookings')).json())[0].status,'Converted');
+await request('api/settings','POST',{headline:'Updated from dashboard',intro:'Live sync works',availability:'Available',contactEmail:'hello@example.com'});const publicSettings=await(await request('api/settings','GET',undefined,false)).json();assert.equal(publicSettings.headline,'Updated from dashboard');assert.equal(publicSettings.contactEmail,'hello@example.com');
+await request('api/projects','POST',{title:'Published project',category:'Video editing',description:'Portfolio sync test',link:'https://example.com/video'});const publicProjects=await(await request('api/projects','GET',undefined,false)).json();assert.equal(publicProjects[0].title,'Published project');assert.ok(!JSON.stringify(publicProjects).includes('test@example.com'));
+assert.equal((await request('api/clients','GET',undefined,false)).status,401);assert.equal((await request('api/bookings','GET',undefined,false)).status,401);
+const manifest=await(await request('manifest.webmanifest')).json();assert.equal(manifest.display,'standalone');assert.equal(manifest.start_url,'/admin');for(const size of [192,512]){const bytes=Buffer.from(await(await request('app-icon-'+size+'.png')).arrayBuffer());assert.equal(bytes.readUInt32BE(16),size);assert.equal(bytes.readUInt32BE(20),size)}
+assert.ok((await(await request('sw.js')).text()).includes('Network-only private data'));
+await request('api/clients/'+client.id,'DELETE');assert.equal((await(await request('api/clients')).json()).length,0);
+const dashboard=await(await request('admin')).text();assert.ok(dashboard.includes('Client pipeline'));assert.ok(dashboard.includes('Publish website changes'));
+console.log('PASS: script syntax, protected client data, client/payment validation, enquiry conversion, live settings and portfolio APIs, PWA manifest/icons, client deletion.');
