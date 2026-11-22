@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 
 const objects=new Map(),BUCKET={async list({prefix}){return{objects:[...objects.keys()].filter(k=>k.startsWith(prefix)).map(key=>({key})),truncated:false}},async put(k,v,o){objects.set(k,{v,o})},async get(k){const x=objects.get(k);return x?{text:async()=>x.v,body:x.v,httpMetadata:x.o?.httpMetadata}:null},async delete(k){objects.delete(k)}};
 const env={BUCKET,ADMIN_PASSWORD:'test-studio-secret'};let cookie='';
 async function request(path,method='GET',body,auth=true){return worker.fetch(new Request('https://test.frostfuel/'+path,{method,headers:{...(auth&&cookie?{cookie}:{}),'Content-Type':'application/json'},...(body!==undefined?{body:JSON.stringify(body)}:{})}),env)}
-for(const file of ['landing.html','dashboard.html']){const text=fs.readFileSync(file,'utf8');for(const s of text.matchAll(/<script>([\s\S]*?)<\/script>/g))new vm.Script(s[1],{filename:file});}
+for(const file of ['index.html','dashboard.html']){const text=fs.readFileSync(file,'utf8');for(const s of text.matchAll(/<script>([\s\S]*?)<\/script>/g))new vm.Script(s[1],{filename:file});}
 assert.equal((await request('api/clients')).status,401);assert.equal((await request('api/settings','POST',{headline:'Unauthorized'})).status,401);
 const login=await request('api/login','POST',{password:env.ADMIN_PASSWORD});assert.equal(login.status,200);cookie=login.headers.get('set-cookie').split(';')[0];
 const b=await request('api/bookings','POST',{name:'Test Client',email:'test@example.com',service:'Web development',brief:'Test brief'});const booking=await b.json();assert.ok(booking.id);

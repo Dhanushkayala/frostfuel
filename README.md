@@ -1,33 +1,52 @@
-# Frostfuel
+# Frostfuel — latest website and Studio dashboard
 
-Agency website and installable Studio dashboard for web development and video editing.
+**Your existing deployment is Netlify: https://frostfu.netlify.app**
 
-## Deploy to Vercel
+Use **[DEPLOY-NETLIFY.md](DEPLOY-NETLIFY.md)** for this site. The earlier Vercel guide applies only if you choose a separate Vercel deployment.
 
-**Start with [DEPLOY-VERCEL.md](DEPLOY-VERCEL.md).** It covers GitHub import, the private records store, public media store, required secret environment variables and migration from the existing Site.
+## What changed
 
-Vercel setup: Framework **Other**, Node **22.x**, build `npm run build`, output `public`. The repository's `vercel.json` routes website and API requests to the application function.
+- `index.html` is now the latest **Cool ideas. Powerful execution.** landing page.
+- Removed the obsolete landing-page copy, old JavaScript and old styles so they cannot be mistaken for the current app.
+- `npm run build` creates `public/index.html` with logo, sample gallery and palette behavior embedded.
+- `netlify.toml` sets the correct build, publish directory and backend functions.
+- `/build-info.json` identifies the deployed commit and build time.
+- Netlify uses native Netlify Blobs with strong-consistency reads. No Vercel Blob tokens are needed for Netlify.
+- Protected uploads use authenticated chunks, preserving the 20 MB limit.
+- The real admin password is an environment secret and is never stored in GitHub.
 
-Required environment variables (values must never be committed):
+## Netlify setup
 
-- `ADMIN_PASSWORD`: your Studio password.
-- `BLOB_READ_WRITE_TOKEN`: a **private** Blob store for client records, enquiries and settings.
-- `MEDIA_BLOB_READ_WRITE_TOKEN`: a separate **public** Blob store for published pictures and videos.
+Connect this repository and branch **main** to your Netlify project. Use:
 
-The GitHub repository contains source and demo media. Live clients, enquiries and later uploads are **not** stored in GitHub. An optional migration script copies those to your own Blob stores without deleting the source; see the deployment guide before using it.
+| Setting | Value |
+| --- | --- |
+| Base directory | Repository root |
+| Build command | `npm run build` |
+| Publish directory | `public` |
+| Functions directory | `netlify/functions` |
+| Node | `22` |
+
+Set **ADMIN_PASSWORD** in Netlify environment variables with **Functions** scope, then redeploy. Enable Netlify Blobs if your account prompts for it. See [the complete guide](DEPLOY-NETLIFY.md) for version checks and troubleshooting.
 
 ## Features
 
-- Responsive black/cyan agency site with interactive Web/Video previews and enquiry form.
-- Password-protected Studio at `/admin`, installable through supported browsers.
-- Client pipeline, private notes, deadlines, agreed values, recorded payments and balances.
-- Enquiry follow-up statuses and conversion to client records.
-- Portfolio and pictures/video samples with cover/poster uploads and 20 MB media limit.
-- Homepage copy and contact-email controls.
-- Six-color palette editor with presets, preview, hex colors and contrast feedback.
-- Published content refreshes in open website tabs within 30 seconds.
+- Responsive agency landing page with interactive previews, services, work samples and enquiry form.
+- Installable password-protected Studio at `/admin`.
+- Client pipeline, deadlines, private notes, agreed project values and payment balances.
+- Enquiry follow-up and client conversion.
+- Portfolio, picture and playable video publishing with covers/posters.
+- Homepage and contact-email controls.
+- Six-color palette editor with presets, preview and contrast feedback.
+- Published changes refresh in visible website tabs within 30 seconds.
 
-The dashboard requires internet. It does not cache private records for offline access. Email notifications, invoicing, payment collection and calendar reservations are not configured.
+The dashboard needs internet. It does not cache private records offline. Automatic email notifications, invoicing, payment collection and confirmed calendar bookings are not configured.
+
+## Existing data
+
+GitHub stores code and demo assets, **not** live client records or later uploads from the original Sites deployment. Keep the original site online until migration and verification are complete.
+
+The optional `scripts/migrate-from-sites.mjs --netlify` copies source data and media to Netlify without deleting the old data. Read [migration instructions](DEPLOY-NETLIFY.md#existing-sites-data) before using it; credentials stay in an ignored local environment file.
 
 ## Develop and verify
 
@@ -38,19 +57,17 @@ npm test
 npm run dev
 ```
 
-Local preview: http://localhost:4173, Studio password `local-test-only`. Preview data is disposable and does not change production records. Use a Vercel preview deployment with separate stores to test real Blob storage and upload callbacks.
+The local preview runs at http://localhost:4173 and uses disposable memory storage with the test password `local-test-only`. It does not modify production. The real Netlify storage context and deployed secrets must be verified after deployment.
 
-## Source map
+## Files
 
-- `landing.html`, `dashboard.html`: website and Studio.
-- `worker/`: shared application routes.
-- `platform/`, `api/app.js`: Vercel storage, authentication and upload adapters.
-- `samples/`: media editor, gallery and labelled demo media.
-- `palette-*`: theme editor and site-wide palette application.
-- `build.mjs`: bundles the Worker-style application and browser upload client.
+- `index.html`, `dashboard.html`: current website and dashboard source.
+- `worker/`: shared application APIs.
+- `netlify/functions/app.mjs`, `platform/netlify-*`: Netlify backend, persistence and uploads.
+- `samples/`, `palette-*`: media gallery and customizable palette.
+- `build.mjs`: generated website, backend bundle and upload client.
 - `sw.js`: network-only PWA service worker.
-- `scripts/migrate-from-sites.mjs`: optional private migration to your stores.
 
-The previous Sites deployment remains separate at https://frostfuel-studio.dearbrioche16.chatgpt.site. Pushing to this repository does not alter that Site; after you connect Vercel to GitHub, Vercel controls its own deployments.
+For Vercel instead, [DEPLOY-VERCEL.md](DEPLOY-VERCEL.md), `vercel.json` and `api/app.js` remain available as a separate deployment option. Its storage requirements differ from Netlify.
 
-The historical `index.html`, `main.js`, `style.css` and `brand/brand.css` are retained but are not current deployment inputs.
+The previous Site remains at https://frostfuel-studio.dearbrioche16.chatgpt.site; GitHub/Netlify updates do not change that separate deployment.
